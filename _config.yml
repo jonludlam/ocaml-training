@@ -1,4 +1,13 @@
 name: XenServer Ocaml Training
 markdown: kramdown
 pygments: true
-root_path: /ocaml-training
+baseurl: /ocaml-training
+
+defaults:
+  - 
+    scope:
+      path: notebooks
+    values:
+      layout: iocamljs
+      kernel: min
+      tutorial_notebook: true
