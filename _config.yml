@@ -1,0 +1,4 @@
+name: XenServer Ocaml Training
+markdown: kramdown
+pygments: true
+root_path: /ocaml-training
