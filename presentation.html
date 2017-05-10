@@ -4,10 +4,10 @@
 	<head>
 		<meta charset="utf-8">
 
-		<title>OCaml training</title>
+		<title>Toolstack development</title>
 
 		<link rel="stylesheet" href="reveal.js/css/reveal.css">
-		<link rel="stylesheet" href="reveal.js/css/theme/simple.css">
+		<link rel="stylesheet" href="reveal.js/css/theme/white.css">
 
 		<!--[if lt IE 9]>
 		<script src="lib/js/html5shiv.js"></script>
@@ -21,115 +21,433 @@
 			<div class="slides">
 
 				<section>
-					<h2>OCaml training</h2>
-					<p>John Else</p>
-					<p>john.else@citrix.com</p>
+					<h2>Toolstack development training</h2>
+					<p>Jon Ludlam</p>
+					<p>jonthan.ludlam@citrix.com</p>
 					<p>
-						<a href="http://johnelse.github.io/ocaml-training">
-							johnelse.github.io/ocaml-training
+						<a href="http://jonludlam.github.io/ocaml-training">
+							jonludlam.github.io/ocaml-training
 						</a>
 					</p>
 				</section>
 
 				<section>
-					<h2>OCaml Features</h2>
+					<h2>Transformer</h2>
 					<ul>
-						<li>Static type system</li>
-						<li>Type inference</li>
-						<li>Pattern matching</li>
-						<li>Expressive type definitions</li>
-						<li>First-class functions</li>
+					  <li>Tranformer has changed how we build our software</li>
+					  <li>It's still changing frequently</li>
+					  <li>But the fundamentals are clear and consistent...</li>
 					</ul>
 				</section>
 
 				<section>
-					<h2>Tools - OPAM</h2>
-					<ul>
-						<li>Source-based package manager</li>
-						<li>git/http backends</li>
-						<li>Easy to create repos for testing and installing your own packages</li>
-						<li>Easy to try out new compilers</li>
-					</ul>
-					<p><a href="http://opam.ocaml.org/">opam.ocaml.org</a></p>
+					<section>
+						<h2>RPMs</h2>
+						<ul>
+							<li>XenServer is built from RPMs</li>
+							<li>RPMs are build from SRPMs (Source RPMs)</li>
+							<li>RPMs and SRPMs can be put into YUM repositories</li>
+							<li>One output of the XS build system is a YUM repository</li>
+						</ul>
+						<h3>This is all you need to build all of the XenServer RPMs</h3>
+					</section>
+					<section>
+						<h2>Anatomy of an RPM</h2>
+						An RPM is a cpio archive. They can be unpacked:
+<pre><code>jludlam@vivacious:/tmp$ rpm2cpio ~/xapi-1.9.57-8730.src.rpm | cpio -idv
+0001-Workaround-for-NVIDIA-330.patch
+jquery-1.1.3.1.pack.js
+jquery.treeview.zip
+xapi-1.9.57.tar.bz2
+xapi-version.patch
+xapi.spec
+4702 blocks
+</code></pre>
+					</section>
+					<section>
+						<h2>Source RPMs contain:</h2>
+						<ul>
+							<li>A SPEC file</li>
+							<li>Pristine source tarballs</li>
+							<li>Optional patches</li>
+							<li>Optional other configuration files</li>
+						</ul>
+					</section>
+
+					<section>
+						<h2>The SPEC file</h2>
+						It specifies many things, including:
+						<ul>
+							<li>The package name</li>
+							<li>The package 'version'</li>
+							<li>BuildRequires: The RPMs you need to install to be able to build it</li>
+							<li>Requires: The RPMs you need to install to be able to run it</li>
+							<li>How to build it</li>
+						</ul>
+					</section>
+
+					<section>
+<pre><code>Name:           opam
+Version:        1.2.2
+Release:        2%{?dist}
+Summary:        Source-based OCaml package manager
+License:        LGPLv3
+URL:            https://github.com/ocaml/opam
+Source0:        https://repo.citrite.net:443/ctx-local-contrib/xs-opam/opam-full-1.2.2.tar.gz
+BuildRequires:  curl
+BuildRequires:  ocaml
+
+%description
+Source-based OCaml package manager
+
+%prep
+%setup -q -n %{name}-full-%{version}
+
+%build
+%configure
+make lib-ext
+make
+
+%install
+make install DESTDIR=%{buildroot}
+
+%files
+%doc AUTHORS
+%doc CHANGES
+%doc CONTRIBUTING.md
+%doc LICENSE
+%doc README.md
+%{_bindir}/opam
+%{_bindir}/opam-admin
+%{_bindir}/opam-installer
+
+%changelog
+* Mon Feb 27 2017 Christian Lindig &lt;christian.lindig@citrix.com&gt; - * 1.2.2-2
+- Download sources from Artifactory
+</code></pre>
+					</section>
+
+					<section>
+						<h2>rpmbuild</h2>
+						rpmbuild builds an RPM out of an SRPM
+<pre><code>rpmbuild --rebuild foo.rpm
+</code></pre>
+					</section>
+
+					<section>
+						<h2>YUM</h2>
+						Groups together a bunch of RPMs.
+						<ul>
+							<li>Creates a database of names, versions, dependencies, build dependencies</li>
+							<li>You can ask it to install an RPM, and it will install its dependencies, and their dependencies...</li>
+							<li>You can ask it to install the build requirements of a source RPM.</li>
+						</ul>
+					</section>
+
+					<section>
+						<h2>Creating a YUM repository</h2>
+						Easy.
+						<ul>
+							<li>Get your RPMs/SRPMs in a directory (with subdirs if you like)</li>
+							<li>Run 'createrepo &lt;dir&gt;'</li>
+							<li>You can ask it to install the build requirements of a source RPM.</li>
+						</ul>
+					</section>
+
 				</section>
 
 				<section>
-					<h2>Tools - utop</h2>
-					<ul>
-						<li>User-friendly REPL</li>
-						<li>Tab-completion</li>
-						<li>readline support</li>
-						<li>Much more user-friendly than the standard OCaml toplevel!</li>
-					</ul>
-					<p>opam install utop</p>
-					<p><a href="https://github.com/diml/utop">github.com/diml/utop</a></p>
+				  <section>
+				    <h2>Demo: Building xapi</h2>
+				    <ul>
+				      <li>Start with a XenServer</li>
+							<li>Minor fixes (more RAM, correct base YUM repos)</li>
+				      <li>Add the yum repository for the most recent successful build</li>
+				      <li>Install some tools: <code>rpm-build, yum-utils</code></li>
+				      <li><code>yum-builddep</code> to get build dependencies</li>
+				      <li><code>yumdownloader</code> to get the source</li>
+				      <li><code>rpmbuild</code> to build it</li>
+				    </ul>
+				    <h3>If all else fails, this should <em>always</em> work</h3>
+				  </section>
+
+					<section>
+				    <h2>Dom0 with extra RAM</h2>
+				    <ul>
+				      <li>Start with a fresh XenServer install</li>
+							<li>Give dom0 some extra ram - needed for xapi, not needed for smaller parts</li>
+				    </ul>
+<pre><code>
+DOM0=`xe vm-list is-control-domain=true --minimal`
+xe vm-memory-limits-set uuid=$DOM0 dynamic-max=3GiB dynamic-min=3GiB static-max=3GiB static-min=3GiB
+reboot
+</code></pre>
+				  </section>
+
+					<section>
+				    <h2>Fix the broken yum repositories</h2>
+				    <ul>
+							<li>Fix the broken yum repos files (may not always be necessary?)</li>
+							<pre><code>sed -i "/mirror/d" /etc/yum.repos.d/*.repo</code></pre>
+						</ul>
+					</section>
+
+					<section>
+					  <h2>Set up the yum repositories</h2>
+					  <ul>
+				      <li>Find the most recent successful build on <a href="https://ratchet.do.citrite.net/job/xenserver-specs/job/team%252Fring3%252Fmaster/">Ratchet</a></li>
+				      <li>Locate the artifactory link, where the <code>repodata</code> directory is.
+								<pre><code>"https://repo.citrite.net/xs-local-build/xenserver-specs/team/ring3/master/281/RPMS"</code></pre></li>
+				      <li>Add a file into the yum repositories list in <code>/etc/yum.repos.d/</code>. I usually call it 'xs.repo'</li>
+				    </ul>
+<pre><code>
+[xs]
+name=xs
+baseurl=https://repo.citrite.net/xs-local-build/xenserver-specs/team/ring3/master/281/RPMS
+gpgcheck=false
+enabled=true
+</code></pre>
+				  </section>
+
+					<section>
+						<h2>Install the build tools</h2>
+<pre><code>
+yum install -y yum-utils rpm-build vim
+</code></pre>
+					</section>
+
+					<section>
+						<h2>Install xapi's build dependencies</h2>
+<pre><code>
+yum-builddep xapi
+</code></pre>
+						Best to log out/in after this.
+ 					</section>
+					<section>
+						<h2>Download xapi's source rpm</h2>
+<pre><code>
+yumdownloader --source xapi
+</pre></code>
+					</section>
+
+					<section>
+						<h2>Now we can build it:</h2>
+<pre><code>
+rpmbuild --rebuild xapi
+</pre></code>
+						Not terribly useful, we usually want to build something with changes.
+					</section>
+
+					<section>
+						<h2>Build from source</h2>
+						<ul>
+							<li>Acquire the source</li>
+<pre><code>
+git clone git://github.com/xapi-project/xen-api
+</pre></code>
+							<li>Build it</li>
+<pre><code>
+cd xen-api
+./configure
+make
+</pre></code>
+
+					</section>
+
+				</section>
+
+        <section>
+					<section>
+						<h2>A <em>nicer</em> development environment</h2>
+						The previous section described a setup that works, but isn't
+						very nice to develop in. Let's switch tracks now to a build
+						a more pleasant environmnent in which to work.
+					</section>
+
+					<section>
+						<h2>Modern OCaml development</h2>
+						Since XenServer first started using OCaml way back in 2006,
+						the state-of-the-art in OCaml development has progressed a long
+						way. There are many excellent new tools, utilities, integrations
+						and improvements, but I'd like to focus first on <em>opam</em>
+					</section>
+
+					<section>
+						<h2>Opam</h2>
+						Opam is a source-based package manager for OCaml. It has an
+						excellent <a href="https://opam.ocaml.org/">website</a>, with
+						great documentation. Since it was released to the public a few
+						years ago, it has entirely taken over as the standard way to
+						consume ocaml libraries
+					</section>
+
+					<section>
+						<h2>But what is it?</h2>
+						It's a lot like the combination of YUM and RPM. An opam repository
+						contains lots of packages mostly corresponding to individual OCaml
+						libraries or tools, with interdependencies specified and a script
+						to build. Let's see an <a href="https://github.com/ocaml/opam-repository">example</a>
+					</section>
+
+					<section>
+						<h2>Why is this important?</h2>
+						XenServer relies on many many upstream packages. We used to maintain
+						<a href="https://code.citrite.net/projects/XS/repos/baggage/browse/SPECS?at=refs%2Fheads%2Frelease%2Fely%2Fstaging">RPM spec files</a> for all of these.
+						However, the OCaml landscape is moving fast right now, and maintaining
+						these SPEC files was a large task, and so it made sense to use opam
+						to simplify maintenance. Hence we now have an opam repository that
+						we maintain (by copying in files from the upstream opam repository)
+						that specifies. This is available on <a href="https://github.com/xapi-project/xs-opam">github</a>
+					</section>
+
+					<section>
+						<h2>How does this work for XenServer?</h2>
+						Opam is intended as a per-user tool, whereas RPMs are intended to
+						be used as a whole-system thing. So there's a little bit of a
+						mismatch. Usually, opam installs everything in <code>~/.opam</code>,
+						but we have configured it to install in <code>/usr/lib/opamroot</code>.
+						See the contents of the RPM:
+<pre><code>rpm -ql xs-opam-repo | less</code></pre>
+					</section>
+
+					<section>
+						<h2>Use of xs-opam outside of a XenServer environment</h2>
+						We want to eventually run our code in an environment that looks like
+						a XenServer, but this isn't a nice GUI environment to actually use.
+						But since opam can be installed on, say, an Ubuntu installation,
+						we can develop there. We can't install the resulting binaries on
+						a XenServer, but we <em>can</em> run the tests!
+					</section>
+
 				</section>
 
 				<section>
-					<h2>Tools - IOCaml</h2>
-					<ul>
-						<li>OCaml mode for IPython</li>
-						<li>REPL in a web browser, with embedded markdown</li>
-						<li>Used to display the code samples in this presentation</li>
-					</ul>
-					<p>opam install iocaml</p>
-					<p><a href="https://github.com/andrewray/iocaml">github.com/andrewray/iocaml</a></p>
+					<h2>The dev-vm development environment</h2>
+					We wanted to come up with a 'standard' environment that could be
+					used. We're using a VM for this, but you could just as well install
+					this on real machine. As it happens, we're using Vagrant to manage
+					ths VM.
+
+					<a href="http://github.com/xapi-project/dev-vm">Github project</a>
+
 				</section>
 
 				<section>
-					<h2>Tools - Merlin</h2>
-					<ul>
-						<li>Code completion and type lookup engine</li>
-						<li>Plugins for vim, emacs</li>
-					</ul>
-					<p>opam install merlin</p>
-					<p><a href="https://github.com/the-lambda-church/merlin">github.com/the-lambda-church/merlin</a></p>
-					<p><a href="https://github.com/the-lambda-church/merlin/wiki/emacs-from-scratch">emacs installation instructions</a></p>
-					<p><a href="https://github.com/the-lambda-church/merlin/wiki/vim-from-scratch">vim installation instructions</a></p>
-					<p><a href="http://anil.recoil.org/2013/10/03/merlin-and-vim.html">Another vim guide</a></p>
+					<section>
+						<h2>Tools</h2>
+					</section>
+
+					<section>
+						<h2>Tools - utop</h2>
+						<ul>
+							<li>User-friendly REPL</li>
+							<li>Tab-completion</li>
+							<li>readline support</li>
+							<li>Much more user-friendly than the standard OCaml toplevel!</li>
+						</ul>
+						<p>opam install utop</p>
+						<p><a href="https://github.com/diml/utop">github.com/diml/utop</a></p>
+					</section>
+
+					<section>
+						<h2>Tools - IOCaml</h2>
+						<ul>
+							<li>OCaml mode for IPython</li>
+							<li>REPL in a web browser, with embedded markdown</li>
+							<li>Used to display the code samples in this presentation</li>
+						</ul>
+						<p>opam install iocaml</p>
+						<p><a href="https://github.com/andrewray/iocaml">github.com/andrewray/iocaml</a></p>
+					</section>
+
+					<section>
+						<h2>Tools - Merlin</h2>
+						<ul>
+							<li>Code completion and type lookup engine</li>
+							<li>Plugins for vim, emacs, VS Code, Atom</li>
+						</ul>
+						<p>opam install merlin</p>
+						<p><a href="https://github.com/the-lambda-church/merlin">github.com/the-lambda-church/merlin</a></p>
+						<p><a href="https://github.com/the-lambda-church/merlin/wiki/emacs-from-scratch">emacs installation instructions</a></p>
+						<p><a href="https://github.com/the-lambda-church/merlin/wiki/vim-from-scratch">vim installation instructions</a></p>
+						<p><a href="http://anil.recoil.org/2013/10/03/merlin-and-vim.html">Another vim guide</a></p>
+					</section>
+
+					<section>
+						<h2>Tools - ocp-index</h2>
+						<ul>
+							<li>Allows browsing/completion of installed libraries from the
+								command line</li>
+						</ul>
+					</section>
 				</section>
 
 				<section>
-					<h2>Libraries - Unix</h2>
-					<p>Functions for handling:
-					<ul>
-						<li>Files</li>
-						<li>Pipes</li>
-						<li>Sockets (unix/network)</li>
-						<li>Processes</li>
-						<li>etc...</li>
-					</ul>
-					<p><a href="http://caml.inria.fr/pub/docs/manual-ocaml/libref/Unix.html">INRIA docs</a></p>
-					<p><a href="http://pleac.sourceforge.net/pleac_ocaml/sockets.html">Sockets examples</a></p>
-				</section>
+					<section>
+						<h2>Libraries</h2>
+					</section>
 
-				<section>
-					<h2>Libraries - Sys</h2>
-					<ul>
-						<li>Access to command-line arguments</li>
-						<li>Signal handling</li>
-						<li>Filesystem operations</li>
-					</ul>
-					<p><a href="http://caml.inria.fr/pub/docs/manual-ocaml/libref/Sys.html">INRIA docs</a></p>
-				</section>
+					<section>
+						<h2>Libraries - Unix</h2>
+						Functions for handling:
+						<ul>
+							<li>Files</li>
+							<li>Pipes</li>
+							<li>Sockets (unix/network)</li>
+							<li>Processes</li>
+							<li>etc...</li>
+						</ul>
+						<p><a href="http://caml.inria.fr/pub/docs/manual-ocaml/libref/Unix.html">INRIA docs</a></p>
+						<p><a href="http://pleac.sourceforge.net/pleac_ocaml/sockets.html">Sockets examples</a></p>
+					</section>
 
-				<section>
-					<h2>Libraries - stdext</h2>
-					<p>Citrix's extensions to the OCaml standard library</p>
-					<ul>
-						<li>Stringext, Listext, Unixext, etc...</li>
-						<li>We'd like to deprecate it eventually, but it's used all over our legacy code.</li>
-					</ul>
-					<p><a href="https://github.com/xapi-project/xen-api-libs/tree/master/stdext">Github link</a></p>
-				</section>
+					<section>
+						<h2>Libraries - Sys</h2>
+						<ul>
+							<li>Access to command-line arguments</li>
+							<li>Signal handling</li>
+							<li>Filesystem operations</li>
+						</ul>
+						<p><a href="http://caml.inria.fr/pub/docs/manual-ocaml/libref/Sys.html">INRIA docs</a></p>
+					</section>
 
-				<section>
-					<h2>Libraries - rpclib</h2>
-					<ul>
-						<li>Create RPC marshalling functions from types</li>
-						<li>Create RPC client and server modules from interfaces</li>
-					</ul>
-					<p><a href="https://github.com/samoht/ocaml-rpc">github.com/samoht/ocaml-rpc</a></p>
+					<section>
+						<h2>Libraries - stdext</h2>
+						<p>Citrix's extensions to the OCaml standard library</p>
+						<ul>
+							<li>Stringext, Listext, Unixext, etc...</li>
+							<li>We'd like to deprecate it eventually, but it's used all over our legacy code.</li>
+						</ul>
+						<p><a href="https://github.com/xapi-project/xen-api-libs/tree/master/stdext">Github link</a></p>
+					</section>
+
+					<section>
+						<h2>Libraries - ocaml-rpc</h2>
+						<ul>
+							<li>Create RPC marshalling functions from types</li>
+							<li>Create RPC client and server modules from interfaces</li>
+						</ul>
+						<p><a href="https://github.com/mirage/ocaml-rpc">github.com/mirage/ocaml-rpc</a></p>
+					</section>
+
+					<section>
+						<h2>Libraries - Mirage</h2>
+						<ul>
+							<li>A large number of libraries aimed at unikernels</li>
+							<li><a href="https://mirage.io/">Website</a></li>
+							<li>We use many libraries from the project (Xenstore, RPC, shared-block-ring, etc)</li>
+						</ul>
+					</section>
+
+					<section>
+						<h2>Libraries - Lwt</h2>
+						<ul>
+							<li>A monadic concurrency library</li>
+							<li>"Light-weight threads"</li>
+							<li>Quite advanced - Monads are a tricky concept to master</li>
+						</ul>
+					</section>
+
 				</section>
 
 				<section>
@@ -144,8 +462,9 @@
 				<section>
 					<h2>Help?!</h2>
 					<ul>
-						<li>irc.freenode.com - #ring3 (private), #ocaml</li>
+						<li>slack - #xs-ring3</li>
 						<li><a href="https://sympa.inria.fr/sympa/info/caml-list">caml-list</a></li>
+						<li>The OCaml community is very friendly :-)</li>
 					</ul>
 				</section>
 			</div>
