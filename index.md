@@ -6,6 +6,7 @@ title: Xapi Project Ocaml Tutorials
 
 [Slides]({{site.baseurl}}/presentation.html)
 
-{% for notebook in (site.pages | where:"tutorial_notebook", true) %}
-   [{{notebook.title}}]({{site.baseurl}}{{notebook.url}})
-{% endfor %}
+There are also a number of Jupyter notebooks in this repository. To use
+these, please clone the github repository and run the `start` script.
+This requires Docker.
+
