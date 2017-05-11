@@ -1,3 +1,12 @@
+The Jupyter notebooks in this repository can be run most easily using Docker. Just run 
+
+```
+./start
+```
+
+And open the printed URL in your browser. Alternatively you can set things up to use
+your local ocaml with the opam environment available.
+
 To prepare:
 
 ```
